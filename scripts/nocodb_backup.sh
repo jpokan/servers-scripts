@@ -38,7 +38,35 @@ mkdir -p "$BACKUP_DIR"
 docker cp "$CONTAINER_NAME:$DB_PATH_IN_CONTAINER" "$BACKUP_FILE"
 
 # --- Optional: clean up old backups (older than 7 days) ---
-find "$BACKUP_DIR" -name "nc_backup_*.db" -type f -mtime +7 -exec rm {} \;
+# find "$BACKUP_DIR" -name "nc_backup_*.db" -type f -mtime +7 -exec rm {} \;
+
+# Keep only the 5 most recent backups, delete the rest
+# ls -1t "$BACKUP_DIR"/nc_backup_*.db | tail -n +6 | xargs -r rm --
+
+# 1. Keep all backups from the last 24 hours
+# 2. Keep only one backup per day from past 7 days
+# 3. Delete anything else
+
+# Set variables
+BACKUP_PATTERN="nc_backup_*.db"
+RETENTION_DIR="$BACKUP_DIR"
+NOW=$(date +%s)
+
+# Step 1: Delete backups older than 1 day that are not the most recent for that day
+find "$RETENTION_DIR" -name "$BACKUP_PATTERN" -type f -mmin +1440 | while read -r file; do
+	file_date=$(basename "$file" | cut -d'_' -f3 | cut -d'-' -f1-3)
+	day_files=$(find "$RETENTION_DIR" -name "nc_backup_${file_date}_*.db" -type f)
+
+	newest_file=$(ls -1t $day_files | head -n1)
+
+	if [ "$file" != "$newest_file" ]; then
+		echo "Deleting old backup: $file"
+		rm "$file"
+	fi
+done
+
+# Optional: Delete backups older than 7 days (even if they were the only one for the day)
+find "$RETENTION_DIR" -name "$BACKUP_PATTERN" -type f -mtime +7 -exec rm {} \;
 
 # --- Done ---
 echo "Backup saved to $BACKUP_FILE"
