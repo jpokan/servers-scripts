@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ./discord_notif.sh
+
 # NocoDB
 # This script makes backups for the nocodb SQLite database file, it copies the file inside the container instance and saves it on the selected host machine directory $BACKUP_DIR
 #
@@ -36,6 +38,9 @@ mkdir -p "$BACKUP_DIR"
 
 # --- Copy the database from the container to host ---
 docker cp "$CONTAINER_NAME:$DB_PATH_IN_CONTAINER" "$BACKUP_FILE"
+# --- Done ---
+echo "Backup saved to $BACKUP_FILE"
+discord_backed # Webhook to discord
 
 # --- Optional: clean up old backups (older than 7 days) ---
 # find "$BACKUP_DIR" -name "nc_backup_*.db" -type f -mtime +7 -exec rm {} \;
@@ -52,8 +57,11 @@ BACKUP_PATTERN="nc_backup_*.db"
 RETENTION_DIR="$BACKUP_DIR"
 NOW=$(date +%s)
 
+# Initialize an empty array to store file names
+deleted_list=()
+
 # Step 1: Delete backups older than 1 day that are not the most recent for that day
-find "$RETENTION_DIR" -name "$BACKUP_PATTERN" -type f -mmin +1440 | while read -r file; do
+for file in $(find "$RETENTION_DIR" -name "$BACKUP_PATTERN" -type f -mmin +1440); do
 	file_date=$(basename "$file" | cut -d'_' -f3 | cut -d'-' -f1-3)
 	day_files=$(find "$RETENTION_DIR" -name "nc_backup_${file_date}_*.db" -type f)
 
@@ -62,11 +70,16 @@ find "$RETENTION_DIR" -name "$BACKUP_PATTERN" -type f -mmin +1440 | while read -
 	if [ "$file" != "$newest_file" ]; then
 		echo "Deleting old backup: $file"
 		rm "$file"
+		deleted_list+=("- ${file}\n")
 	fi
 done
+# deleted_string=$(printf -- "- %s\n" "${deleted_list[@]}")
+deleted_string=$(
+	IFS=
+	echo "${deleted_list[*]}"
+)
+echo "Deleted files: $deleted_string"
+discord_cleaned # Cleaned webhook to discord
 
 # Optional: Delete backups older than 7 days (even if they were the only one for the day)
 find "$RETENTION_DIR" -name "$BACKUP_PATTERN" -type f -mtime +7 -exec rm {} \;
-
-# --- Done ---
-echo "Backup saved to $BACKUP_FILE"
