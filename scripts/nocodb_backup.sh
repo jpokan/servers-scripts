@@ -3,7 +3,19 @@
 # NocoDB
 # This script makes backups for the nocodb SQLite database file, it copies the file inside the container instance and saves it on the selected host machine directory $BACKUP_DIR
 #
-# to run the script you can do it manually or set a cron task using the command "crontab -e" from the server terminal
+# 1. Set a cron task from the host server
+# crontab -e
+#
+# 2. Paste this on the opened crontab file (example: run daily at 2 AM)
+# 0 2 * * * /root/scripts/nocodb_backup.sh >> /var/log/nocodb_backup.log 2>&1
+#
+# 3. To make the script executable
+# sudo chmod +x /root/scripts/nocodb_backup.sh
+#
+# 4. Test by running the script
+# ./nocodb_backup.sh
+#
+# Extras (original)
 #
 # Manually copy the file on your server
 # docker cp CONTAINER_NAME:/usr/app/data/noco.db ~/noco.db
