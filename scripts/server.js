@@ -6,8 +6,8 @@ const PORT = process.env.PORT || 3005;
 app.use(express.json());
 
 app.post("/trigger-backup", (req, res) => {
-  const command =
-    'docker run --rm --privileged -v /:/mnt alpine sh -c "chroot /mnt sh /root/scripts/nocodb_backup.sh"';
+  const command = "sh nocodb_backup.sh";
+  //   const command = 'docker run --rm --privileged -v /:/mnt alpine sh -c "chroot /mnt sh /opt/scripts/nocodb_backup.sh"';
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error(`Backup error: ${error.message}`);
@@ -21,4 +21,3 @@ app.post("/trigger-backup", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Webhook listener running on port ${PORT}`);
 });
-

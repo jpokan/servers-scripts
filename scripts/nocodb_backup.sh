@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. /opt/scripts/discord_notif.sh
+. discord_notif.sh
 echo "imported discord messages"
 
 # --- Configuration ---
@@ -12,18 +12,17 @@ BACKUP_FILE="$BACKUP_DIR/nc_backup_$DATE.db"
 BACKUP_PATTERN="nc_backup_*.db"
 RETENTION_DIR="$BACKUP_DIR"
 
+BACKUP_FILE="/opt/nocodb_backups/nc_backup_$DATE.db"
+
 # --- Ensure backup directory exists ---
 mkdir -p "$BACKUP_DIR"
 echo "directory created: $BACKUP_DIR"
 
 # --- Copy the database from the container to host ---
-docker cp "$CONTAINER_NAME:$DB_PATH_IN_CONTAINER" "$BACKUP_FILE"
+cp "$DB_PATH_IN_CONTAINER" "$BACKUP_FILE"
+# docker cp "$CONTAINER_NAME:$DB_PATH_IN_CONTAINER" "$BACKUP_FILE"
 echo "backed up: $BACKUP_FILE"
-
-# --- Cleanup logic ---
-NOW=$(date +%s)
-DELETED_LIST=""
-TEMP_FILE=$(mktemp)
+discord_backed
 
 # Delete backups older than 1 day unless they are the newest of that day
 find "$RETENTION_DIR" -name "$BACKUP_PATTERN" -type f -mmin +1440 | while read file; do
@@ -33,20 +32,9 @@ find "$RETENTION_DIR" -name "$BACKUP_PATTERN" -type f -mmin +1440 | while read f
 
 	if [ "$file" != "$NEWEST_FILE" ]; then
 		echo "Deleting old backup: $file"
-		# rm "$file"
-		echo "- $file" >>"$TEMP_FILE"
-		# DELETED_LIST="$DELETED_LIST- $file\n"
+		rm "$file"
 	fi
 done
 
-# Show deleted files
-echo "Deleted files:"
-cat "$TEMP_FILE"
-discord_cleaned
-rm "$TEMP_FILE"
-
 # Optional: Delete backups older than 7 days
 find "$RETENTION_DIR" -name "$BACKUP_PATTERN" -type f -mtime +7 -exec rm {} \;
-
-# Final confirmation
-echo "Backup saved to $BACKUP_FILE"
